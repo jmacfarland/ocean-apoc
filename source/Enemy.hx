@@ -25,3 +25,29 @@ class Enemy extends FlxSprite
 
     
 }
+
+//code to move enemy and shoot and stuff
+/*
+//move enemy
+		for(enemy in enemyGroup)
+		{
+			if(enemy.alive)
+			{
+				moveEnemy(enemy, player.x, player.y);//takes target x and y
+
+				if(shootTimer >= shootInterval)
+				{
+					enemyShoot(enemy);
+				}
+			}
+		}
+
+		if(shootTimer >= shootInterval)
+		{
+			shootTimer = 0;
+		}else
+		{
+			shootTimer++;
+		}
+
+        */

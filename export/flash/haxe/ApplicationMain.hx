@@ -131,7 +131,7 @@ class ApplicationMain {
 		
 		config = {
 			
-			build: "181",
+			build: "200",
 			company: "HaxeFlixel",
 			file: "oceanApoc",
 			fps: 60,
