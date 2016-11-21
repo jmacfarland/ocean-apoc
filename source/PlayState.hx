@@ -1,12 +1,13 @@
 package;
 
+import Projectile;
+import Enemy;
 import flixel.FlxG;
 import flixel.FlxSprite;
 import flixel.FlxObject;
 import flixel.FlxState;
 import flixel.text.FlxText;
 import flixel.ui.FlxButton; //IDEA add a restart button below gameover text
-import flixel.util.FlxTimer;
 import flixel.util.FlxColor;
 import flixel.group.FlxGroup;
 import flixel.group.FlxSpriteGroup;
@@ -32,8 +33,13 @@ class PlayState extends FlxState
 	private var numEnemies:Int = 5;
 	private var enemyDamage:Int = 1;
 	private var enemySpeed:Float = 0.5;
+	private var projectileGroup:FlxSpriteGroup;
+	private var bulletSize:Int = 2;
+	private var shootTimer = 0;
+	private var shootInterval = 20;
 
 	//general vars
+	private var hittable:FlxGroup;//Group of all things that can be hit
 	private var healthText:FlxText;
 	private var gameOverText:FlxText;
 	private var screenMiddleX:Int = Math.floor(FlxG.width / 2);
@@ -45,6 +51,8 @@ class PlayState extends FlxState
 		super.create();
 		FlxG.mouse.visible = false;
 		enemyGroup = new FlxSpriteGroup();
+		projectileGroup = new FlxSpriteGroup();
+		hittable = new FlxGroup();
 
 		//create the player object
 		player = new FlxSprite(screenMiddleX - playerSize * 2, screenMiddleY);
@@ -58,9 +66,27 @@ class PlayState extends FlxState
 			addObstacle();
 		}
 
+		//populate the enemy group
 		for(i in 0...numEnemies)
 		{
-			addEnemy();
+			var x:Int = Math.floor(Math.random()*FlxG.width);
+			var y:Int = Math.floor(Math.random()*FlxG.height);
+			
+			//repeat until x and y are out of the spawn buffer
+			while((x + spawnBuffer < screenMiddleX &&
+				x - spawnBuffer > screenMiddleX ) &&
+				(y + spawnBuffer < screenMiddleY &&
+				y - spawnBuffer > screenMiddleY))
+			{
+				x = Math.floor(Math.random()*FlxG.width);
+				y = Math.floor(Math.random()*FlxG.height);
+			}
+
+			var enemy:FlxSprite = new FlxSprite(x, y);
+			enemy.makeGraphic(playerSize, playerSize, FlxColor.RED);
+
+			enemyGroup.add(enemy);
+			add(enemy);
 		}
 
 		healthText = new FlxText(0, 0, 200, "Health: " + playerHealth);
@@ -69,6 +95,10 @@ class PlayState extends FlxState
 		gameOverText = new FlxText(screenMiddleX - 150, screenMiddleY - 20, 500, "Game Over! [SPACE] => restart", 16);
 		gameOverText.alpha = 0;
 		add(gameOverText);
+
+		hittable.add(player);
+		hittable.add(enemyGroup);
+		hittable.add(obstacleGroup);
 	}
 
 	override public function update(elapsed:Float):Void
@@ -107,9 +137,26 @@ class PlayState extends FlxState
 			playerDirection = FlxObject.NONE;
 		}
 
+		//move enemy
 		for(enemy in enemyGroup)
 		{
-			moveEnemy(enemy);
+			if(enemy.alive)
+			{
+				moveEnemy(enemy, player.x, player.y);//takes target x and y
+
+				if(shootTimer >= shootInterval)
+				{
+					enemyShoot(enemy);
+				}
+			}
+		}
+
+		if(shootTimer >= shootInterval)
+		{
+			shootTimer = 0;
+		}else
+		{
+			shootTimer++;
 		}
 
 		//move the player (duh)
@@ -117,15 +164,29 @@ class PlayState extends FlxState
 
 		//check for collisions
 		FlxG.collide(player, obstacleGroup);
-		FlxG.collide(player, enemyGroup, playerTakeDamage);
+		FlxG.collide(player, projectileGroup, playerTakeDamage);
 		FlxG.collide(enemyGroup, obstacleGroup);
+		FlxG.collide(enemyGroup, projectileGroup, killEnemy);
+
+		//destroy bullets if they hit anything
+		FlxG.collide(projectileGroup, hittable, destroyProjectile);
 	}
 
-//Moves the enemy towards the player at enemySpeed 
-	private function moveEnemy(enemy:FlxSprite):Void
+	private function killEnemy(enemy:FlxSprite, projectile:Projectile):Void
 	{
-		var deltaX:Float = player.x - enemy.x;
-		var deltaY:Float = player.y - enemy.y;
+		enemy.kill();
+		enemy.active = false;
+	}
+
+	private function destroyProjectile(projectile:Projectile, hitObject:FlxObject):Void
+	{
+		projectile.destroy();
+	}
+
+	private function moveEnemy(enemy:FlxSprite, targetX:Float, targetY:Float):Void
+	{
+		var deltaX:Float = targetX - enemy.x;
+		var deltaY:Float = targetY - enemy.y;
 		var distance:Float = Math.sqrt(Math.pow(deltaX, 2) + Math.pow(deltaY, 2));
 		var ux:Float = deltaX / distance;
 		var uy:Float = deltaY / distance;
@@ -136,11 +197,24 @@ class PlayState extends FlxState
 
 	private function enemyShoot(enemy:FlxSprite):Void
 	{
-		//shoot a projectile
-			//add a projectile to a group of projectiles that will update
-			//give it a unit vector of direction
+		//setup direction
+		var deltaX:Float = player.x - enemy.x;
+		var deltaY:Float = player.y - enemy.y;
+		var distance:Float = Math.sqrt(Math.pow(deltaX, 2) + Math.pow(deltaY, 2));
+		var ux:Float = deltaX / distance;
+		var uy:Float = deltaY / distance;
 
-		//set a timer to call this to shoot again
+		//make a projectile
+		var projectile:Projectile = new Projectile(enemy.x + enemy.origin.x, enemy.y + enemy.origin.y);
+		projectile.makeGraphic(bulletSize, bulletSize, FlxColor.ORANGE);
+
+		//give it a unit vector of direction
+		projectile.ux = ux;
+		projectile.uy = uy;
+
+		//add a projectile to a group of projectiles that will update
+		projectileGroup.add(projectile);
+		add(projectile);
 	}
 
 	private function movePlayer(elapsed:Float):Void
@@ -174,7 +248,7 @@ class PlayState extends FlxState
 		}
 	}
 
-	private function playerTakeDamage(Object1:FlxObject, Object2:FlxObject):Void
+	private function playerTakeDamage(player:FlxObject, projectile:FlxObject):Void
 	{
 		//TODO: make taking damage knock the player back away from the enemy
 		playerHealth -= enemyDamage;
@@ -184,6 +258,8 @@ class PlayState extends FlxState
 		{
 			gameOver();
 		}
+
+		projectile.destroy();
 
 		//knockback code (WISHLIST)
 		/*
@@ -238,29 +314,5 @@ class PlayState extends FlxState
 		//add to the parent group
 		obstacleGroup.add(obstacle);
 		add(obstacle);
-	}
-
-	private function addEnemy():Void
-	{
-		var enemy:FlxSprite = new FlxSprite();
-
-		var x:Int = Math.floor(Math.random()*FlxG.width);
-		var y:Int = Math.floor(Math.random()*FlxG.height);
-		
-		//repeat until x and y are out of the spawn buffer
-		while((x + spawnBuffer < screenMiddleX &&
-			   x - spawnBuffer > screenMiddleX ) &&
-			  (y + spawnBuffer < screenMiddleY &&
-			   y - spawnBuffer > screenMiddleY))
-		{
-			x = Math.floor(Math.random()*FlxG.width);
-			y = Math.floor(Math.random()*FlxG.height);
-		}
-
-		var enemy:FlxSprite = new FlxSprite(x, y);
-		enemy.makeGraphic(playerSize, playerSize, FlxColor.RED);
-
-		enemyGroup.add(enemy);
-		add(enemy);
 	}
 }
