@@ -1,19 +1,20 @@
 package;
 
-import org.flixel.FlxSprite;
+import flixel.FlxSprite;
 
 /**********************
 * @author jmacfarland *
 **********************/
 
-public class Item extends FlxSprite
+class Item extends FlxSprite
 {
-    public var image:Class;
+    //public var image:FlxSprite;
     public var name:String;
     public var quantity:Int;
 
-    public function Item(name:String, ?quantity:Int)
+    override public function new(name:String, ?quantity:Int)
     {
+        super();
         this.name = name;
         if(quantity == null) this.quantity = 1;
     }

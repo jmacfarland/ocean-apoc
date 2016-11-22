@@ -1,15 +1,15 @@
 package;
 
+import Inventory;
 import flixel.FlxG;
-import flixel.math.FlxPoint;
 import flixel.FlxSprite;
-import flixel.FlxObject;
 import flixel.FlxState;
 import flixel.text.FlxText;
 import flixel.ui.FlxButton; //IDEA add a restart button below gameover text
 import flixel.util.FlxColor;
 import flixel.group.FlxGroup;
-import flixel.group.FlxSpriteGroup;
+
+using flixel.util.FlxSpriteUtil;
 
 class PlayState extends FlxState
 {
@@ -17,11 +17,16 @@ class PlayState extends FlxState
 	private var player:FlxSprite;
 	private var playerSpeed:Float = 1.0;
 	private var playerSize:Int = 10;
-	private var waypoint:FlxPoint;
+	private var waypointX:Float;
+	private var waypointY:Float;
 	private var playerHealth = 100;
+	private var inventory:Inventory;
+
+	//player waypoint vars
+	//TODO: add system to keep track of multiple waypoints
 
 	//obstacle vars
-	private var obstacleGroup:FlxSpriteGroup;
+	private var obstacleGroup:FlxGroup;
 	private var maxObstaclesPerGroup:Int = 15;
 	private var numObstacles:Int = 20;
 	private var obstacleMinSize:Int = 15;
@@ -34,36 +39,63 @@ class PlayState extends FlxState
 	private var screenMiddleX:Int = Math.floor(FlxG.width / 2);
 	private var screenMiddleY:Int = Math.floor(FlxG.height / 2);
 	private var spawnBuffer:Int = 10;
+	private var canvas:FlxSprite;
+	private var lineStyle:LineStyle = {color: FlxColor.BLUE, thickness:1};
+
+	//grouping
+	private var foreground:FlxGroup;
+	private var background:FlxGroup;
+	private var gui:FlxGroup;
+	private var midground:FlxGroup; //between foreground and background, and behind player. Obstacles
 
 	override public function create():Void
 	{
 		super.create();
-		solid = new FlxGroup();
 
-		//create the player object
+		//init groups and sorting layers
+		solid = new FlxGroup();
+		obstacleGroup = new FlxGroup();
+		gui = new FlxGroup();
+		foreground = new FlxGroup();
+		midground = new FlxGroup();
+		background = new FlxGroup();
+
+		//create the player object & inventory
 		player = new FlxSprite(screenMiddleX, screenMiddleY);
 		player.makeGraphic(playerSize, playerSize, FlxColor.WHITE);
-		add(player);
+		player.centerOrigin();
+		inventory = new Inventory();
+
+		//create the FlxSprite to hold the waypoint line
+		canvas = new FlxSprite(0, 0);
+		canvas.makeGraphic(FlxG.width, FlxG.height, FlxColor.TRANSPARENT, true);
+		midground.add(canvas);
 
 		//create the waypoint at the player location
-		waypoint = new FlxPoint(screenMiddleX, screenMiddleY);
+		waypointX = player.x;
+		waypointY = player.y;
 
 		//populate the obstacleGroup
-		obstacleGroup = new FlxSpriteGroup();
 		for(i in 0...numObstacles)
 		{
 			addObstacle();
 		}
 
 		healthText = new FlxText(0, 0, 200, "Health: " + playerHealth);
-		add(healthText);
+		gui.add(healthText);
 
 		gameOverText = new FlxText(screenMiddleX - 150, screenMiddleY - 20, 500, "Game Over! [SPACE] => restart", 16);
 		gameOverText.alpha = 0;
-		add(gameOverText);
+		gui.add(gameOverText);
 
-		solid.add(player);
 		solid.add(obstacleGroup);
+
+		//add the sorting layers
+		add(background);
+		add(midground);
+		add(player);
+		add(foreground);
+		add(gui);
 	}
 
 	override public function update(elapsed:Float):Void
@@ -82,10 +114,18 @@ class PlayState extends FlxState
 		}
 
 		//set a new waypoint
-		if(FlxG.mouse.pressed)
+		if(FlxG.mouse.justPressed)//set waypoint
 		{
-			setWaypoint();
+			waypointX = FlxG.mouse.x;
+			waypointY = FlxG.mouse.y;
+		}else if(FlxG.mouse.justPressedRight)//cancel waypoint
+		{
+			waypointX = player.x;
+			waypointY = player.y;
 		}
+
+		//clear the canvas
+		canvas.fill(FlxColor.TRANSPARENT);
 
 		//move the player (duh)
 		movePlayer();
@@ -94,23 +134,22 @@ class PlayState extends FlxState
 		FlxG.collide(player, solid);
 	}
 
-	private function setWaypoint():Void
-	{
-		waypoint.x = FlxG.mouse.x;
-		waypoint.y = FlxG.mouse.y;
-	}
-
 	private function movePlayer():Void
 	{
 		//setup direction
-		var deltaX:Float = waypoint.x - player.x;
-		var deltaY:Float = waypoint.y - player.y;
+		var deltaX:Float = waypointX - player.x;
+ 		var deltaY:Float = waypointY - player.y;
 		var distance:Float = Math.sqrt(Math.pow(deltaX, 2) + Math.pow(deltaY, 2));
-		var ux:Float = deltaX / distance;
-		var uy:Float = deltaY / distance;
 
-		player.x += ux * playerSpeed;
-		player.y += uy * playerSpeed;
+		 //only moves if distance is greater than 1
+		if(distance >= 1)
+		{
+			canvas.drawLine(player.x + playerSize / 2, player.y + playerSize / 2, waypointX, waypointY, lineStyle);
+			var ux:Float = deltaX / distance;
+			var uy:Float = deltaY / distance;
+			player.x += ux * playerSpeed;
+			player.y += uy * playerSpeed;
+		}
 	}
 
 	private function gameOver():Void
@@ -154,6 +193,6 @@ class PlayState extends FlxState
 
 		//add to the parent group
 		obstacleGroup.add(obstacle);
-		add(obstacle);
+		midground.add(obstacle);
 	}
 }
