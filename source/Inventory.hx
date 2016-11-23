@@ -1,49 +1,54 @@
 package;
 
 import Item;
+import flixel.FlxSprite;
+import flixel.FlxBasic;
+import flixel.group.FlxGroup;
+import flixel.util.FlxColor;
 
-class Inventory
+class Inventory extends FlxBasic
 {
-    private var inventory:Array<Item> = new Array();
+    public var inventory:Array<Item> = new Array();
 	private var items:Array<Item> = new Array();
 
     //private var numSlots:Int;
 
     public function new()
     {
-        //numSlots = slots;
+        super();
+
+        //set up all the items
+        items.push(new Item("Buoy"));
+        items[0].loadGraphic(AssetPaths.icon_buoy__png);
     }
 
     public function updateInv():Void
 	{
 		for(i in 0...inventory.length)
 		{
-			inventory[i].x = 16 * i;
-			inventory[i].y = 44;
+			inventory[i].x = 17 * i;
+			inventory[i].y = 2;
 		}
 	}
 
-    public function add(name:String):Void
+    public function addItem(name:String):Void
     {
         var newItem:Item = new Item(null);
-        var itemFound:Bool = false;
 
         for(i in 0...items.length)
         {
             if(items[i].name == name)
             {
                 newItem.name = name;
-                itemFound = true;
             }
         }
 
-        if(!itemFound) return;
-
         inventory.push(newItem);
         updateInv();
+        //return(newItem);
     }
 
-    public function rem(name:String)
+    public function removeItem(name:String)
     {
         for(i in 0...inventory.length)
         {

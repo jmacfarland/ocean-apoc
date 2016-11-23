@@ -14,4 +14,9 @@ class Waypoint extends FlxBasic
         x = xNew;
         y = yNew;
     }
+
+    override public function update(elapsed:Float):Void
+    {
+        super.update(elapsed);
+    }
 }
