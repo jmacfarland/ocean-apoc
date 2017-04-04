@@ -10,6 +10,10 @@ import flixel.ui.FlxButton; //IDEA add a restart button below gameover text
 import flixel.util.FlxColor;
 import flixel.group.FlxGroup;
 
+/********************************
+*	@author jmacfarland	*
+********************************/
+
 class PlayState extends FlxState
 {
 	//player vars
