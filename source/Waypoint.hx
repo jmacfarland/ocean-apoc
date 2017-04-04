@@ -2,6 +2,10 @@ package;
 
 import flixel.FlxBasic;
 
+/********************************
+*	    @author jmacfarland	    *
+********************************/
+
 class Waypoint extends FlxBasic
 {
     public var x:Float;
